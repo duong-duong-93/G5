@@ -217,7 +217,7 @@ const COLORS=[{n:'Coral',g:'●'},{n:'Amber',g:'■'},{n:'Teal',g:'▲'},{n:'Ind
 const colorOf=n=>(n-1)%5;
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function shuffle(arr,rng){rng=rng||Math.random;for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
-const DOTS=(function(){const rng=mulberry32(20261023),d={};for(let c=0;c<5;c++){const nums=[];for(let n=c+1;n<=60;n+=5)nums.push(n);const a=shuffle([1,1,1,1,2,2,2,2,3,3,3,3],rng);nums.forEach((n,i)=>{d[n]=a[i]})}return d})();
+const DOTS=(function(){const d={};for(let n=1;n<=60;n++)d[n]=(Math.floor((n-1)/5)%3)+1;return d})();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=s=>document.querySelector(s);
 const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
