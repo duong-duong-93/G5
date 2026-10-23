@@ -1,0 +1,7 @@
+{
+  "name": "hidden-five",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Online multiplayer tile-deduction game",
+  "engines": { "node": ">=18" }
+}

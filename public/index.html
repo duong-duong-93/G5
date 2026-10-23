@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hidden Five</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: the shared table (pool, stands, log) on the left, your private deduction board sticky on the right.
+   Stands scroll sideways inside their own box on phones. */
+:root{
+  --bg:#E7EBF0; --surface:#F6F8FA; --surface2:#EAEFF4; --fg:#111A26; --muted:#556375; --line:#C8D0DA;
+  --accent:#21407A; --on-accent:#FFFFFF; --good:#1A7F4B; --bad:#B3342B; --shadow:rgba(17,26,38,.16);
+  --c0:#D14A24; --t0:#FFFFFF; --c1:#F0B429; --t1:#1B1403; --c2:#12806F; --t2:#FFFFFF; --c3:#4F63D8; --t3:#FFFFFF; --c4:#A64CA0; --t4:#FFFFFF;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D131B; --surface:#151D28; --surface2:#1C2634; --fg:#E6ECF3; --muted:#93A1B3; --line:#2B3949;
+    --accent:#8CAEF0; --on-accent:#0B1626; --good:#52C48A; --bad:#F0867D; --shadow:rgba(0,0,0,.55); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D131B; --surface:#151D28; --surface2:#1C2634; --fg:#E6ECF3; --muted:#93A1B3; --line:#2B3949;
+  --accent:#8CAEF0; --on-accent:#0B1626; --good:#52C48A; --bad:#F0867D; --shadow:rgba(0,0,0,.55); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--font-body);
+  padding-block:16px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;line-height:1.1}
+h2{font-size:1.1rem;font-weight:800}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:.6rem;padding:.6rem 1rem;font-weight:600}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--fg);border:1.5px solid var(--line)}
+.btn.small{padding:.35rem .7rem;font-size:.85rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:.9rem;padding:14px}
+.muted{color:var(--muted)}
+input[type=text],input[type=number]{font:inherit;background:var(--bg);color:var(--fg);border:1.5px solid var(--line);border-radius:.55rem;padding:.55rem .7rem;min-width:0;width:100%}
+
+/* tiles */
+.c0{--tc:var(--c0);--tt:var(--t0)}.c1{--tc:var(--c1);--tt:var(--t1)}.c2{--tc:var(--c2);--tt:var(--t2)}.c3{--tc:var(--c3);--tt:var(--t3)}.c4{--tc:var(--c4);--tt:var(--t4)}
+.tile{width:100%;max-width:4.4rem;aspect-ratio:3/4;border-radius:.55rem;background:var(--tc);color:var(--tt);
+  display:grid;grid-template-rows:auto 1fr auto;padding:.28rem .35rem;font-family:var(--font-mono);box-shadow:0 2px 6px var(--shadow)}
+.tile .glyph{font-size:.65rem;line-height:1}
+.tile .num{font-size:1.45rem;font-weight:700;align-self:center;text-align:center;font-variant-numeric:tabular-nums}
+.tile .dots{display:flex;gap:.2rem;justify-content:center;min-height:.5rem}
+.tile .dots i{width:.45rem;height:.45rem;border-radius:50%;background:currentColor;display:block}
+.tile.back{background:repeating-linear-gradient(135deg,var(--line) 0 2px,var(--surface2) 2px 8px);color:var(--muted);border:1.5px solid var(--line)}
+.tile.back .q{grid-row:2;align-self:center;text-align:center;font:800 1.6rem var(--font-display);background:var(--surface2);border-radius:.4rem}
+.chip{display:inline-flex;gap:.25rem;align-items:center;background:var(--tc);color:var(--tt);border-radius:.4rem;padding:.12rem .38rem;font:700 .8rem var(--font-mono);font-variant-numeric:tabular-nums}
+.chip b{font-weight:700;letter-spacing:-.1em;font-size:.7rem}
+
+/* home */
+.hero{display:grid;gap:14px;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}
+.hero h1{font-size:clamp(2.2rem,6vw,3.6rem);font-weight:800;letter-spacing:-.02em}
+.hero .lede{max-width:34rem;margin:.6rem 0 0;color:var(--muted)}
+.fan{display:flex;gap:.4rem;margin-top:1rem}
+.fan .tile{max-width:3.6rem}
+.fan .tile:nth-child(odd){transform:rotate(-3deg)}.fan .tile:nth-child(even){transform:rotate(3deg) translateY(.2rem)}
+.form{display:grid;gap:10px}
+.form label{font-size:.8rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:grid;gap:4px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1 1 8rem}
+.how{margin:0;padding-left:1.1rem;display:grid;gap:6px;color:var(--muted)}
+.how b{color:var(--fg)}
+
+/* room */
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.bar .brand{font:800 1.4rem var(--font-display)}
+.codebox{display:flex;gap:8px;align-items:center}
+.code{font:700 1.15rem var(--font-mono);letter-spacing:.18em;background:var(--surface);border:1.5px dashed var(--line);padding:.3rem .7rem;border-radius:.5rem}
+.status{font:800 1.15rem var(--font-display);padding:12px 14px;border-radius:.8rem;background:var(--surface);border:1px solid var(--line)}
+.status.me{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.layout{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:980px){.layout{grid-template-columns:minmax(0,1fr) 21.5rem}.side{position:sticky;top:12px;align-self:start}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.pool{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:10px}
+.poolbtn{background:transparent;border:2px solid transparent;border-radius:.7rem;padding:3px;width:4.7rem}
+.poolbtn:disabled{cursor:default}
+.poolbtn.sel{border-color:var(--accent);background:var(--surface2)}
+.actions{display:grid;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.segs{display:flex;gap:6px;flex-wrap:wrap}
+.seg{background:var(--surface2);border:1.5px solid var(--line);border-radius:.55rem;padding:.4rem .8rem;font-weight:600}
+.seg[aria-pressed=true]{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.seg:disabled{opacity:.35;cursor:not-allowed}
+.hint{margin:0;color:var(--muted);font-size:.9rem}
+
+.stand{padding:12px}
+.stand.out{opacity:.55}
+.stand header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.stand .pname{font:800 1.05rem var(--font-display)}
+.badge{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.12rem .45rem;border-radius:99px;border:1.5px solid var(--line);color:var(--muted)}
+.badge.turn{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.scroll{overflow-x:auto;padding-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(5,2.9rem minmax(4.2rem,1fr)) 2.9rem;column-gap:4px;row-gap:4px;min-width:38rem}
+.notch{grid-row:1/span 2;background:var(--surface2);border-radius:.5rem;display:flex;flex-direction:column;gap:4px;align-items:center;padding:6px 2px;min-height:6rem}
+.slot{grid-row:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.slotno{font:500 .7rem var(--font-mono);color:var(--muted)}
+.cmpcell{grid-row:2;display:flex;justify-content:center;align-items:flex-start;gap:4px;flex-wrap:wrap;min-height:2rem}
+.cmp{display:inline-flex;flex-direction:column;align-items:center;gap:1px}
+.cmp em{font:600 .68rem var(--font-mono);font-style:normal}
+.cmp em.yes{color:var(--good)}.cmp em.no{color:var(--bad)}
+.cand{font:500 .68rem var(--font-mono);color:var(--muted);text-align:center}
+.axis{display:flex;justify-content:space-between;font:500 .7rem var(--font-mono);color:var(--muted);min-width:38rem}
+.log{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;font-size:.9rem}
+.log li{padding:.3rem .5rem;border-radius:.4rem;background:var(--surface2)}
+.log li.bad{color:var(--bad)}.log li.good{color:var(--good);font-weight:600}
+
+.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;margin-top:10px}
+.bhead{font:700 .65rem var(--font-mono);text-align:center;color:var(--tt);background:var(--tc);border-radius:.3rem;padding:.15rem 0}
+.cell{border:0;border-radius:.3rem;background:var(--surface2);border-left:4px solid var(--tc);padding:.2rem .1rem;font:600 .78rem var(--font-mono);text-align:center;font-variant-numeric:tabular-nums;color:var(--fg);display:grid;gap:1px;min-width:0}
+.cell small{font-size:.5rem;letter-spacing:-.05em;color:var(--muted);line-height:1}
+.cell.seen{opacity:.28;text-decoration:line-through;cursor:default}
+.cell.x{opacity:.3;text-decoration:line-through}
+.cell.ruled{opacity:.3;background:transparent;border-style:dashed}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);margin-top:8px}
+.guessrow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin-top:8px}
+.guessrow input{text-align:center;padding:.5rem .1rem;font-family:var(--font-mono);font-weight:700;-moz-appearance:textfield}
+.guessrow input::-webkit-outer-spin-button,.guessrow input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.switch{display:flex;gap:8px;align-items:center;font-weight:600;margin-top:10px}
+.switch input{width:1.1rem;height:1.1rem;accent-color:var(--accent)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:.6rem 1rem;border-radius:.6rem;font-weight:600;max-width:calc(100% - 32px);z-index:20}
+.players{list-style:none;margin:10px 0;padding:0;display:grid;gap:6px}
+.players li{display:flex;justify-content:space-between;gap:8px;background:var(--surface2);padding:.55rem .75rem;border-radius:.55rem;font-weight:600}
+.winner{font:800 1.4rem var(--font-display)}
+footer{font-size:.78rem;color:var(--muted)}
+@media (max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:no-preference){.tile{transition:transform .15s}}
+html,body{margin:0}[hidden]{display:none!important}:root{color-scheme:light}
+</style></head><body>
+
+<div class="wrap">
+  <section id="home" hidden>
+    <div class="hero">
+      <div>
+        <h1>Hidden Five</h1>
+        <p class="lede">Five tiles sit on your stand and everyone can read them except you. Ask for clues, cross out what cannot be yours, and be first to name all five.</p>
+        <div class="fan" aria-hidden="true" id="fan"></div>
+      </div>
+      <div class="card form">
+        <label>Your name<input id="nameIn" type="text" maxlength="16" autocomplete="off" placeholder="Mai"></label>
+        <button class="btn" type="button" data-act="create">Create a room</button>
+        <div class="row">
+          <label style="flex:1 1 8rem">Room code<input id="codeIn" type="text" maxlength="4" autocomplete="off" placeholder="K7QW" style="text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-mono)"></label>
+          <button class="btn ghost" type="button" data-act="join" style="align-self:end">Join</button>
+        </div>
+        <p class="hint" id="homeMsg"></p>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>How a turn goes</h2>
+      <ol class="how" style="margin-top:8px">
+        <li><b>Reveal.</b> Draw a tile of any colour from the supply. Its number is now public.</li>
+        <li><b>Ask.</b> Pick one tile from the pool. <b>Sort</b> tells you where it fits among your five (a tile on your stand is always in ascending order). <b>Compare</b> tells you whether it has the same number of dots as one slot of your choice.</li>
+        <li><b>Call it.</b> At any moment you may name your five numbers. One try only. A wrong call puts you out; the last player standing wins.</li>
+      </ol>
+      <p class="hint" style="margin-top:8px">60 tiles, numbers 1 to 60, five colours of twelve, each with 1, 2 or 3 dots. Everyone starts with one tile of each colour.</p>
+    </div>
+  </section>
+
+  <section id="room" hidden>
+    <div class="bar">
+      <div class="brand">Hidden Five</div>
+      <div class="codebox"><span class="muted">Room</span><span class="code" id="codeShow"></span>
+        <button class="btn ghost small" type="button" data-act="copy">Copy</button>
+        <button class="btn ghost small" type="button" data-act="leave">Leave</button></div>
+    </div>
+    <div class="status" id="status" style="margin-top:12px"></div>
+    <div id="lobby" class="card" style="margin-top:16px" hidden></div>
+    <div class="layout" id="game" style="margin-top:16px" hidden>
+      <div class="col">
+        <div class="card"><h2>Pool</h2><div class="pool" id="pool"></div><div class="actions" id="actions"></div></div>
+        <div id="stands" class="col"></div>
+        <div class="card"><h2>What happened</h2><ul class="log" id="log"></ul></div>
+      </div>
+      <aside class="side col">
+        <div class="card">
+          <h2>Your board</h2>
+          <div class="board" id="board"></div>
+          <div class="legend"><span>Struck: visible to you</span><span>Tap to cross out</span><span id="legendAssist" hidden>Dashed: no hand fits</span></div>
+          <label class="switch"><input type="checkbox" id="assist"> Deduction assist</label>
+          <p class="hint" id="assistInfo" hidden></p>
+        </div>
+        <div class="card">
+          <h2>Call Five</h2>
+          <p class="hint">Your five numbers. One try.</p>
+          <div class="guessrow">
+            <input type="number" id="g0" min="1" max="60" inputmode="numeric" aria-label="Number 1">
+            <input type="number" id="g1" min="1" max="60" inputmode="numeric" aria-label="Number 2">
+            <input type="number" id="g2" min="1" max="60" inputmode="numeric" aria-label="Number 3">
+            <input type="number" id="g3" min="1" max="60" inputmode="numeric" aria-label="Number 4">
+            <input type="number" id="g4" min="1" max="60" inputmode="numeric" aria-label="Number 5">
+          </div>
+          <div class="row" style="margin-top:8px" id="guessBtns">
+            <button class="btn" type="button" data-act="guess" id="guessBtn">Call it</button>
+            <button class="btn ghost" type="button" data-act="fillonly" id="fillBtn" hidden>Fill the only hand</button>
+          </div>
+          <div id="confirmRow" hidden style="margin-top:8px">
+            <p class="hint" id="confirmText"></p>
+            <div class="row" style="margin-top:6px"><button class="btn" type="button" data-act="confirmguess">Lock it in</button><button class="btn ghost" type="button" data-act="cancelguess">Cancel</button></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+  <footer>An unofficial online take on the deduction game Got Five! by Yoann Levet (Blue Orange). Made for friends; buy the box if you like it. Tiles are stored with the room, so looking at network traffic would spoil your own hand.</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+const COLORS=[{n:'Coral',g:'●'},{n:'Amber',g:'■'},{n:'Teal',g:'▲'},{n:'Indigo',g:'◆'},{n:'Plum',g:'★'}];
+const colorOf=n=>(n-1)%5;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffle(arr,rng){rng=rng||Math.random;for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+const DOTS=(function(){const rng=mulberry32(20261023),d={};for(let c=0;c<5;c++){const nums=[];for(let n=c+1;n<=60;n+=5)nums.push(n);const a=shuffle([1,1,1,1,2,2,2,2,3,3,3,3],rng);nums.forEach((n,i)=>{d[n]=a[i]})}return d})();
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+
+let db=null,uid=null,code=null,room=null,D=null,unsub=null,manual=new Set(),assist=false,pendingGuess=null;
+let sel={t:null,mode:'sort',slot:null};
+let memo={key:'',val:null};
+
+function tile(n){const c=colorOf(n);return `<div class="tile c${c}" aria-label="${COLORS[c].n} ${n}, ${DOTS[n]} dots"><span class="glyph">${COLORS[c].g}</span><span class="num">${n}</span><span class="dots">${'<i></i>'.repeat(DOTS[n])}</span></div>`}
+function back(){return '<div class="tile back" aria-label="Hidden tile"><span class="q">?</span></div>'}
+function chip(n){const c=colorOf(n);return `<span class="chip c${c}" title="${COLORS[c].n} ${n}, ${DOTS[n]} dots">${n}<b>${'●'.repeat(DOTS[n])}</b></span>`}
+
+let toastTimer=null;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.hidden=true},3500)}
+
+/* ---------- derived state ---------- */
+function derive(r){
+  const order=r.order||[],g=r.guesses||{};
+  const elim=new Set(Object.keys(g).filter(k=>!g[k].ok));
+  const ok=Object.entries(g).filter(([k,v])=>v.ok).sort((a,b)=>a[1].t-b[1].t)[0];
+  const alive=order.filter(id=>!elim.has(id));
+  let winner=ok?ok[0]:null;
+  if(!winner&&order.length>1&&alive.length===1)winner=alive[0];
+  return {elim,alive,winner};
+}
+function nextTurn(r,from,elim){const o=r.order,n=o.length;for(let i=1;i<=n;i++){const k=(from+i)%n;if(!elim.has(o[k]))return k}return from}
+const nm=id=>esc((room.players&&room.players[id]&&room.players[id].name)||'Player');
+
+/* ---------- solver ---------- */
+function visibleFor(r,me){
+  const s=new Set(r.faceUp||[]);
+  (r.events||[]).forEach(e=>s.add(e.t));
+  Object.entries(r.hands||{}).forEach(([id,h])=>{if(id!==me)h.forEach(n=>s.add(n))});
+  return s;
+}
+function solve(r,me,vis){
+  const mine=(r.events||[]).filter(e=>e.p===me&&(e.k==='sort'||e.k==='cmp'));
+  const key=[...vis].sort((a,b)=>a-b).join(',')+'|'+mine.map(e=>e.k+e.t+(e.k==='sort'?e.pos:e.slot+''+e.same)).join(';');
+  if(memo.key===key)return memo.val;
+  const L=[0,1,2,3,4].map(c=>{const a=[];for(let n=c+1;n<=60;n+=5)if(!vis.has(n))a.push(n);return a});
+  const sorts=mine.filter(e=>e.k==='sort'),cmps=mine.filter(e=>e.k==='cmp');
+  const slots=[new Set(),new Set(),new Set(),new Set(),new Set()];
+  let count=0,only=null;
+  for(const a of L[0])for(const b of L[1])for(const c of L[2])for(const d of L[3])for(const e of L[4]){
+    const h=[a,b,c,d,e].sort((x,y)=>x-y);let ok=true;
+    for(const s of sorts){let p=0;for(let i=0;i<5;i++)if(h[i]<s.t)p++;if(p!==s.pos){ok=false;break}}
+    if(ok)for(const q of cmps){if((DOTS[h[q.slot]]===DOTS[q.t])!==q.same){ok=false;break}}
+    if(ok){count++;for(let i=0;i<5;i++)slots[i].add(h[i]);if(count===1)only=h}
+  }
+  const poss=new Set();slots.forEach(s=>s.forEach(n=>poss.add(n)));
+  const val={count,slots,poss,only:count===1?only:null};
+  memo={key,val};return val;
+}
+
+/* ---------- views ---------- */
+function showHome(){$('#home').hidden=false;$('#room').hidden=true;$('#nameIn').value=LS.get('hf:name')||''}
+function renderAll(){
+  if(!room)return;
+  D=derive(room);
+  $('#home').hidden=true;$('#room').hidden=false;
+  $('#codeShow').textContent=code;
+  const lobby=room.status==='lobby';
+  $('#lobby').hidden=!lobby;$('#game').hidden=lobby;
+  renderStatus();
+  if(lobby){renderLobby();return}
+  const vis=visibleFor(room,uid);
+  const iAmIn=(room.order||[]).includes(uid);
+  const sol=assist&&iAmIn&&!D.winner?solve(room,uid,vis):null;
+  renderPool();renderActions();renderStands(sol);renderLog();renderBoard(vis,sol);renderGuess(sol);
+}
+function renderStatus(){
+  const r=room,el=$('#status');el.classList.remove('me');
+  if(r.status==='lobby'){el.textContent='Waiting for players';return}
+  if(D.winner){el.innerHTML=(D.winner===uid?'You win!':nm(D.winner)+' wins.')+' All tiles are face up.';return}
+  const cur=r.order[r.turn],mine=cur===uid;
+  const what=r.phase==='reveal'?'reveal a tile':'ask for a clue';
+  el.innerHTML=mine?`Your turn: ${what}`:`${nm(cur)}'s turn: ${what}`;
+  if(mine)el.classList.add('me');
+}
+function renderLobby(){
+  const r=room,ids=Object.keys(r.players||{}).sort((a,b)=>r.players[a].joinedAt-r.players[b].joinedAt);
+  const host=r.host===uid;
+  $('#lobby').innerHTML=`<h2>Players (${ids.length} of 4)</h2><ul class="players">${ids.map(id=>`<li><span>${nm(id)}${id===uid?' (you)':''}</span><span class="muted">${id===r.host?'host':''}</span></li>`).join('')}</ul>
+  <p class="hint">Friends join with the room code <b class="code" style="font-size:.9rem">${esc(code)}</b>. Two to four can play.</p>
+  <div class="row" style="margin-top:10px">${host?`<button class="btn" type="button" data-act="start" ${ids.length<2?'disabled':''}>Start the game</button>`:`<span class="muted">The host starts the game.</span>`}</div>`;
+}
+function renderPool(){
+  const r=room,myTurn=!D.winner&&r.order[r.turn]===uid&&r.phase==='clue'&&!D.elim.has(uid);
+  if(sel.t!==null&&!(r.faceUp||[]).includes(sel.t))sel.t=null;
+  $('#pool').innerHTML=(r.faceUp||[]).slice().sort((a,b)=>a-b).map(n=>`<button type="button" class="poolbtn ${sel.t===n?'sel':''}" data-act="pick" data-t="${n}" ${myTurn?'':'disabled'} aria-pressed="${sel.t===n}">${tile(n)}</button>`).join('')||'<span class="muted">No tiles in the pool.</span>';
+}
+function renderActions(){
+  const r=room,el=$('#actions'),cur=r.order[r.turn];
+  if(D.winner){el.innerHTML=r.host===uid?`<button class="btn" type="button" data-act="again">Play again</button>`:`<p class="hint">The host can start another round.</p>`;return}
+  if(D.elim.has(uid)){el.innerHTML='<p class="hint">You called wrong and are out. You can still watch.</p>';return}
+  const host=r.host===uid;
+  const skip=host&&cur!==uid?`<button class="btn ghost small" type="button" data-act="skipturn">Skip ${nm(cur)}'s turn</button>`:'';
+  if(cur!==uid){el.innerHTML=`<p class="hint">Waiting for ${nm(cur)}.</p>${skip}`;return}
+  if(r.phase==='reveal'){
+    const left=c=>((r.supply||{})['c'+c]||[]).length;
+    const any=[0,1,2,3,4].some(c=>left(c)>0);
+    el.innerHTML=`<p class="hint">Draw one tile from the supply. Choose a colour.</p><div class="segs">${[0,1,2,3,4].map(c=>`<button type="button" class="seg" data-act="reveal" data-c="${c}" ${left(c)?'':'disabled'}>${COLORS[c].g} ${COLORS[c].n} · ${left(c)} left</button>`).join('')}</div>${any?'':'<button class="btn small" type="button" data-act="norevela">Supply is empty, continue</button>'}`;
+    return;
+  }
+  const slotBtns=[0,1,2,3,4].map(i=>`<button type="button" class="seg" data-act="slot" data-s="${i}" aria-pressed="${sel.slot===i}">Slot ${i+1}</button>`).join('');
+  const ready=sel.t!==null&&(sel.mode==='sort'||sel.slot!==null);
+  el.innerHTML=`<p class="hint">Pick a tile in the pool, then choose a clue.</p>
+  <div class="segs"><button type="button" class="seg" data-act="mode" data-m="sort" aria-pressed="${sel.mode==='sort'}">Sort: where does it fit?</button><button type="button" class="seg" data-act="mode" data-m="cmp" aria-pressed="${sel.mode==='cmp'}">Compare: same dots?</button></div>
+  ${sel.mode==='cmp'?`<div class="segs">${slotBtns}</div>`:''}
+  <div class="row"><button class="btn" type="button" data-act="ask" ${ready?'':'disabled'}>Ask</button></div>`;
+}
+function posText(p){return p===0?'left of slot 1':p===5?'right of slot 5':`between slots ${p} and ${p+1}`}
+function renderStands(sol){
+  const r=room,over=!!D.winner,out=[];
+  r.order.forEach((id,idx)=>{
+    const hand=(r.hands||{})[id]||[],mine=id===uid,reveal=over||!mine;
+    const isTurn=!over&&r.turn===idx&&!D.elim.has(id);
+    const ev=(r.events||[]).filter(e=>e.p===id);
+    let cells='';
+    for(let i=0;i<6;i++){
+      cells+=`<div class="notch" style="grid-column:${1+2*i}">${ev.filter(e=>e.k==='sort'&&e.pos===i).map(e=>chip(e.t)).join('')}</div>`;
+      if(i<5){
+        let cand='';
+        if(mine&&sol&&!over){const s=[...sol.slots[i]].sort((a,b)=>a-b);cand=s.length?`<span class="cand">${s[0]}–${s[s.length-1]}<br>${s.length} left</span>`:'<span class="cand">none</span>'}
+        cells+=`<div class="slot" style="grid-column:${2+2*i}">${reveal?tile(hand[i]):back()}<span class="slotno">${i+1}</span>${cand}</div>`;
+        cells+=`<div class="cmpcell" style="grid-column:${2+2*i}">${ev.filter(e=>e.k==='cmp'&&e.slot===i).map(e=>`<span class="cmp">${chip(e.t)}<em class="${e.same?'yes':'no'}">${e.same?'= dots':'≠ dots'}</em></span>`).join('')}</div>`;
+      }
+    }
+    out.push(`<article class="card stand ${D.elim.has(id)?'out':''}"><header><span class="pname">${nm(id)}</span>${mine?'<span class="badge">you</span>':''}${isTurn?'<span class="badge turn">turn</span>':''}${D.elim.has(id)?'<span class="badge">out</span>':''}${D.winner===id?'<span class="badge turn">winner</span>':''}</header>
+      <div class="scroll"><div class="grid">${cells}</div><div class="axis"><span>− smaller</span><span>larger +</span></div></div></article>`);
+  });
+  $('#stands').innerHTML=out.join('');
+}
+function renderLog(){
+  const r=room;
+  const items=(r.events||[]).map(e=>{
+    let t;
+    if(e.k==='reveal')t=`${nm(e.p)} revealed ${chip(e.t)}`;
+    else if(e.k==='sort')t=`${nm(e.p)} sorted ${chip(e.t)}: it sits ${posText(e.pos)}`;
+    else t=`${nm(e.p)} compared ${chip(e.t)} with slot ${e.slot+1}: dots ${e.same?'match':'differ'}`;
+    return {at:e.at||0,html:t,cls:''};
+  }).concat(Object.entries(r.guesses||{}).map(([id,g])=>({at:g.t,cls:g.ok?'good':'bad',html:`${nm(id)} called Five: ${g.ok?'correct':'wrong, out of the game'}`})));
+  items.sort((a,b)=>a.at-b.at);
+  $('#log').innerHTML=items.slice(-14).reverse().map(i=>`<li class="${i.cls}">${i.html}</li>`).join('')||'<li class="muted">Nothing yet.</li>';
+}
+function renderBoard(vis,sol){
+  let h='';
+  for(let c=0;c<5;c++)h+=`<div class="bhead c${c}">${COLORS[c].g} ${COLORS[c].n}</div>`;
+  for(let row=0;row<12;row++)for(let c=0;c<5;c++){
+    const n=row*5+c+1,seen=vis.has(n),x=manual.has(n),ruled=!!sol&&!seen&&!sol.poss.has(n);
+    h+=`<button type="button" class="cell c${c} ${seen?'seen':''} ${x&&!seen?'x':''} ${ruled?'ruled':''}" ${seen?'disabled':''} data-act="cross" data-n="${n}" aria-label="${n}, ${DOTS[n]} dots">${n}<small>${'●'.repeat(DOTS[n])}</small></button>`;
+  }
+  $('#board').innerHTML=h;
+  $('#legendAssist').hidden=!sol;
+}
+function renderGuess(sol){
+  const can=room.status==='playing'&&!D.winner&&!D.elim.has(uid)&&(room.order||[]).includes(uid);
+  $('#guessBtn').disabled=!can;
+  for(let i=0;i<5;i++)$('#g'+i).disabled=!can;
+  const info=$('#assistInfo');info.hidden=!assist;
+  if(assist){
+    info.textContent=sol?`${sol.count.toLocaleString()} hand${sol.count===1?'':'s'} fit what you have seen. Slots show the range of numbers still possible.`:'Assist is paused while the game is not running.';
+  }
+  $('#fillBtn').hidden=!(sol&&sol.only&&can);
+}
+
+/* ---------- db helpers ---------- */
+const ref=()=>db.doc('rooms/'+code);
+let q=Promise.resolve();
+function act(fn){q=q.then(fn).catch(e=>{toast((e&&e.message)||'That did not save. Try again.')});return q}
+async function enter(c){
+  code=c;LS.set('hf:last',c);
+  try{manual=new Set(JSON.parse(LS.get('hf:x:'+c+':'+uid)||'[]'))}catch(e){manual=new Set()}
+  sel={t:null,mode:'sort',slot:null};
+  if(unsub)unsub();
+  unsub=ref().onSnapshot(s=>{
+    if(!s.exists){toast('That room is gone.');leave();return}
+    room=s.data();renderAll();
+  },e=>{toast('Lost connection to the room.');leave()});
+}
+function leave(){if(unsub)unsub();unsub=null;room=null;code=null;LS.del('hf:last');showHome()}
+function genCode(){const A='ABCDEFGHJKMNPQRSTUVWXYZ';let s='';for(let i=0;i<4;i++)s+=A[Math.floor(Math.random()*A.length)];return s}
+function myName(){const v=$('#nameIn').value.trim().slice(0,16);if(v)LS.set('hf:name',v);return v}
+
+const H={
+  async create(){
+    const name=myName();if(!name){$('#homeMsg').textContent='Enter your name first.';return}
+    for(let i=0;i<6;i++){
+      const c=genCode(),d=db.doc('rooms/'+c);
+      if((await d.get()).exists)continue;
+      await d.set({code:c,host:uid,status:'lobby',createdAt:Date.now(),players:{[uid]:{name,joinedAt:Date.now()}},order:[],events:[],guesses:{},hands:{},faceUp:[],supply:{},turn:0,phase:'reveal'});
+      await enter(c);return;
+    }
+    $('#homeMsg').textContent='Could not make a room code. Try again.';
+  },
+  async join(){
+    const name=myName(),c=$('#codeIn').value.trim().toUpperCase();
+    if(!name){$('#homeMsg').textContent='Enter your name first.';return}
+    if(c.length!==4){$('#homeMsg').textContent='Room codes have four letters.';return}
+    const d=db.doc('rooms/'+c),s=await d.get();
+    if(!s.exists){$('#homeMsg').textContent='No room with that code.';return}
+    const r=s.data(),ps=r.players||{};
+    if(!ps[uid]){
+      if(r.status!=='lobby'){$('#homeMsg').textContent='That game has already started.';return}
+      if(Object.keys(ps).length>=4){$('#homeMsg').textContent='That room is full.';return}
+      await d.update({players:{[uid]:{name,joinedAt:Date.now()}}});
+    }
+    await enter(c);
+  },
+  leave(){leave()},
+  copy(){try{navigator.clipboard.writeText(code).then(()=>toast('Code copied')).catch(()=>toast('Room code: '+code))}catch(e){toast('Room code: '+code)}},
+  async start(){
+    const r=room,ids=Object.keys(r.players).sort((a,b)=>r.players[a].joinedAt-r.players[b].joinedAt);
+    if(ids.length<2||ids.length>4)return;
+    const pools=[0,1,2,3,4].map(c=>{const a=[];for(let n=c+1;n<=60;n+=5)a.push(n);return shuffle(a)});
+    const hands={};ids.forEach(id=>{hands[id]=pools.map(p=>p.pop()).sort((a,b)=>a-b)});
+    const faceUp=pools.map(p=>p.pop());
+    const supply={};pools.forEach((p,c)=>{supply['c'+c]=p});
+    await ref().update({status:'playing',order:ids,hands,faceUp,supply,turn:0,phase:'reveal',events:[],guesses:{}});
+  },
+  async again(){
+    const r=room;
+    await ref().set({code:r.code,host:r.host,status:'lobby',createdAt:r.createdAt,players:r.players,order:[],events:[],guesses:{},hands:{},faceUp:[],supply:{},turn:0,phase:'reveal'});
+  },
+  async reveal(el){
+    const r=room;if(r.order[r.turn]!==uid||r.phase!=='reveal')return;
+    const c=+el.dataset.c,sup=((r.supply||{})['c'+c]||[]).slice(),t=sup.pop();
+    if(t===undefined)return;
+    await ref().update({faceUp:[...(r.faceUp||[]),t],supply:{['c'+c]:sup},events:[...(r.events||[]),{k:'reveal',p:uid,t,at:Date.now()}],phase:'clue'});
+  },
+  async norevela(){if(room.order[room.turn]!==uid)return;await ref().update({phase:'clue'})},
+  pick(el){sel.t=+el.dataset.t;renderPool();renderActions()},
+  mode(el){sel.mode=el.dataset.m;renderActions()},
+  slot(el){sel.slot=+el.dataset.s;renderActions()},
+  async ask(){
+    const r=room;if(r.order[r.turn]!==uid||r.phase!=='clue'||sel.t===null)return;
+    const hand=r.hands[uid],t=sel.t;
+    let ev;
+    if(sel.mode==='sort')ev={k:'sort',p:uid,t,pos:hand.filter(x=>x<t).length,at:Date.now()};
+    else{if(sel.slot===null)return;ev={k:'cmp',p:uid,t,slot:sel.slot,same:DOTS[hand[sel.slot]]===DOTS[t],at:Date.now()}}
+    const next=nextTurn(r,r.turn,D.elim);
+    sel={t:null,mode:sel.mode,slot:null};
+    await ref().update({faceUp:r.faceUp.filter(x=>x!==t),events:[...(r.events||[]),ev],phase:'reveal',turn:next});
+  },
+  async skipturn(){
+    const r=room;if(r.host!==uid)return;
+    await ref().update({turn:nextTurn(r,r.turn,D.elim),phase:'reveal'});
+  },
+  cross(el){
+    const n=+el.dataset.n;if(manual.has(n))manual.delete(n);else manual.add(n);
+    LS.set('hf:x:'+code+':'+uid,JSON.stringify([...manual]));renderAll();
+  },
+  guess(){
+    const nums=[0,1,2,3,4].map(i=>parseInt($('#g'+i).value,10));
+    if(nums.some(n=>!(n>=1&&n<=60))){toast('Enter five numbers from 1 to 60.');return}
+    if(new Set(nums).size!==5){toast('The five numbers must be different.');return}
+    pendingGuess=nums.slice().sort((a,b)=>a-b);
+    $('#confirmText').textContent='Lock in '+pendingGuess.join(', ')+'? You only get one call.';
+    $('#confirmRow').hidden=false;$('#guessBtns').hidden=true;
+  },
+  cancelguess(){pendingGuess=null;$('#confirmRow').hidden=true;$('#guessBtns').hidden=false},
+  async confirmguess(){
+    const r=room,nums=pendingGuess;H.cancelguess();
+    if(!nums||D.winner||D.elim.has(uid))return;
+    const hand=r.hands[uid],ok=nums.every((n,i)=>n===hand[i]);
+    const data={guesses:{[uid]:{nums,ok,t:Date.now()}}};
+    if(!ok&&r.order[r.turn]===uid){data.turn=nextTurn(r,r.turn,new Set([...D.elim,uid]));data.phase='reveal'}
+    await ref().update(data);
+    toast(ok?'Correct. You win!':'Wrong. You are out.');
+  },
+  fillonly(){if(!memo.val||!memo.val.only)return;memo.val.only.forEach((n,i)=>{$('#g'+i).value=n})}
+};
+const ASYNC=new Set(['create','join','start','again','reveal','norevela','ask','skipturn','confirmguess']);
+document.addEventListener('click',ev=>{
+  const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;
+  const f=H[el.dataset.act];if(!f)return;
+  if(ASYNC.has(el.dataset.act))act(()=>f(el));else f(el);
+});
+$('#assist').addEventListener('change',e=>{assist=e.target.checked;renderAll()});
+
+
+/* ---------- storage: same interface the game uses, backed by /api/room ---------- */
+function makeDb(){
+  const subs={};
+  async function api(body){
+    const r=await fetch('/api/room',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    let j={};try{j=await r.json()}catch(e){}
+    if(!r.ok)throw new Error(j.error||('Server error ('+r.status+')'));
+    return j;
+  }
+  const snap=(code,d)=>({id:code,exists:!!d,data:()=>d||undefined,metadata:{fromCache:false,hasPendingWrites:false}});
+  function push(code,room){
+    const s=subs[code];if(!s)return;
+    if(room&&s.v>=0&&room._v<=s.v)return;
+    s.v=room?room._v:-1;
+    s.fns.slice().forEach(f=>f.next(snap(code,room)));
+  }
+  async function poll(code){
+    const s=subs[code];if(!s)return;
+    try{
+      const r=await fetch('/api/room?code='+code+'&since='+s.v,{cache:'no-store'});
+      const j=await r.json();
+      if(r.ok&&!j.unchanged)push(code,j.room);
+    }catch(e){}
+  }
+  function startLoop(code){
+    const loop=async()=>{
+      const s=subs[code];if(!s)return;
+      await poll(code);
+      if(subs[code])subs[code].timer=setTimeout(loop,document.hidden?4000:1200);
+    };
+    loop();
+  }
+  return {doc(path){
+    const code=path.split('/')[1];
+    return {
+      async get(){
+        const r=await fetch('/api/room?code='+code,{cache:'no-store'});
+        const j=await r.json();
+        if(!r.ok)throw new Error(j.error||'Server error');
+        return snap(code,j.room);
+      },
+      async set(data){const j=await api({op:'set',code,data});push(code,j.room)},
+      async update(data){const j=await api({op:'update',code,data});push(code,j.room)},
+      onSnapshot(next,error){
+        const f={next,error};
+        if(!subs[code]){subs[code]={fns:[],v:-2,timer:null};subs[code].fns.push(f);startLoop(code)}
+        else{subs[code].fns.push(f);subs[code].v=-2;poll(code)}
+        return ()=>{
+          const s=subs[code];if(!s)return;
+          s.fns=s.fns.filter(x=>x!==f);
+          if(!s.fns.length){clearTimeout(s.timer);delete subs[code]}
+        };
+      }
+    };
+  }};
+}
+
+/* ---------- boot ---------- */
+(async function boot(){
+  $('#fan').innerHTML=[37,12,58,24,41].map(n=>tile(n)).join('');
+  db=makeDb();
+  uid=LS.get('hf:uid');
+  if(!uid){uid='g_'+Math.random().toString(36).slice(2,12);LS.set('hf:uid',uid)}
+  showHome();
+  const last=LS.get('hf:last');
+  if(last){try{const s=await db.doc('rooms/'+last).get();if(s.exists&&s.data().players&&s.data().players[uid])await enter(last);else LS.del('hf:last')}catch(e){}}
+})();
+})();
+</script>
+</body></html>
