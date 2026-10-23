@@ -47,8 +47,9 @@ input[type=text],input[type=number]{font:inherit;background:var(--bg);color:var(
 .tile .num{font-size:1.45rem;font-weight:700;align-self:center;text-align:center;font-variant-numeric:tabular-nums}
 .tile .dots{display:flex;gap:.2rem;justify-content:center;min-height:.5rem}
 .tile .dots i{width:.45rem;height:.45rem;border-radius:50%;background:currentColor;display:block}
-.tile.back{background:repeating-linear-gradient(135deg,var(--line) 0 2px,var(--surface2) 2px 8px);color:var(--muted);border:1.5px solid var(--line)}
-.tile.back .q{grid-row:2;align-self:center;text-align:center;font:800 1.6rem var(--font-display);background:var(--surface2);border-radius:.4rem}
+.tile.back{background:repeating-linear-gradient(135deg,rgba(255,255,255,.2) 0 2px,transparent 2px 8px),var(--tc);color:var(--tt)}
+.tile .cname{font-size:.55rem;line-height:1;text-align:center;letter-spacing:.04em;text-transform:uppercase}
+.tile.back .q{grid-row:2;align-self:center;text-align:center;font:800 1.5rem var(--font-display);background:var(--surface);color:var(--fg);border-radius:.4rem;padding:0 .35rem;justify-self:center}
 .chip{display:inline-flex;gap:.25rem;align-items:center;background:var(--tc);color:var(--tt);border-radius:.4rem;padding:.12rem .38rem;font:700 .8rem var(--font-mono);font-variant-numeric:tabular-nums}
 .chip b{font-weight:700;letter-spacing:-.1em;font-size:.7rem}
 
@@ -136,7 +137,7 @@ html,body{margin:0}[hidden]{display:none!important}:root{color-scheme:light}
     <div class="hero">
       <div>
         <h1>Hidden Five</h1>
-        <p class="lede">Five tiles sit on your stand and everyone can read them except you. Ask for clues, cross out what cannot be yours, and be first to name all five.</p>
+        <p class="lede">Five tiles sit on your stand and everyone can read their numbers except you. You see only their colours. Ask for clues, cross out what cannot be yours, and be first to name all five.</p>
         <div class="fan" aria-hidden="true" id="fan"></div>
       </div>
       <div class="card form">
@@ -156,7 +157,7 @@ html,body{margin:0}[hidden]{display:none!important}:root{color-scheme:light}
         <li><b>Ask.</b> Pick one tile from the pool. <b>Sort</b> tells you where it fits among your five (a tile on your stand is always in ascending order). <b>Compare</b> tells you whether it has the same number of dots as one slot of your choice.</li>
         <li><b>Call it.</b> At any moment you may name your five numbers. One try only. A wrong call puts you out; the last player standing wins.</li>
       </ol>
-      <p class="hint" style="margin-top:8px">60 tiles, numbers 1 to 60, five colours of twelve, each with 1, 2 or 3 dots. Everyone starts with one tile of each colour.</p>
+      <p class="hint" style="margin-top:8px">60 tiles, numbers 1 to 60, five colours of twelve, each with 1, 2 or 3 dots. Everyone starts with one tile of each colour, lined up in ascending number order, so the colour order on your stand is a clue in itself.</p>
     </div>
   </section>
 
@@ -226,7 +227,7 @@ let sel={t:null,mode:'sort',slot:null};
 let memo={key:'',val:null};
 
 function tile(n){const c=colorOf(n);return `<div class="tile c${c}" aria-label="${COLORS[c].n} ${n}, ${DOTS[n]} dots"><span class="glyph">${COLORS[c].g}</span><span class="num">${n}</span><span class="dots">${'<i></i>'.repeat(DOTS[n])}</span></div>`}
-function back(){return '<div class="tile back" aria-label="Hidden tile"><span class="q">?</span></div>'}
+function back(c){return `<div class="tile back c${c}" aria-label="Hidden ${COLORS[c].n} tile"><span class="glyph">${COLORS[c].g}</span><span class="q">?</span><span class="cname">${COLORS[c].n}</span></div>`}
 function chip(n){const c=colorOf(n);return `<span class="chip c${c}" title="${COLORS[c].n} ${n}, ${DOTS[n]} dots">${n}<b>${'●'.repeat(DOTS[n])}</b></span>`}
 
 let toastTimer=null;
@@ -253,8 +254,9 @@ function visibleFor(r,me){
   return s;
 }
 function solve(r,me,vis){
+  const cols=((r.hands&&r.hands[me])||[]).map(colorOf);
   const mine=(r.events||[]).filter(e=>e.p===me&&(e.k==='sort'||e.k==='cmp'));
-  const key=[...vis].sort((a,b)=>a-b).join(',')+'|'+mine.map(e=>e.k+e.t+(e.k==='sort'?e.pos:e.slot+''+e.same)).join(';');
+  const key=cols.join('')+'#'+[...vis].sort((a,b)=>a-b).join(',')+'|'+mine.map(e=>e.k+e.t+(e.k==='sort'?e.pos:e.slot+''+e.same)).join(';');
   if(memo.key===key)return memo.val;
   const L=[0,1,2,3,4].map(c=>{const a=[];for(let n=c+1;n<=60;n+=5)if(!vis.has(n))a.push(n);return a});
   const sorts=mine.filter(e=>e.k==='sort'),cmps=mine.filter(e=>e.k==='cmp');
@@ -262,6 +264,7 @@ function solve(r,me,vis){
   let count=0,only=null;
   for(const a of L[0])for(const b of L[1])for(const c of L[2])for(const d of L[3])for(const e of L[4]){
     const h=[a,b,c,d,e].sort((x,y)=>x-y);let ok=true;
+    if(cols.length===5)for(let i=0;i<5;i++)if(colorOf(h[i])!==cols[i]){ok=false;break}
     for(const s of sorts){let p=0;for(let i=0;i<5;i++)if(h[i]<s.t)p++;if(p!==s.pos){ok=false;break}}
     if(ok)for(const q of cmps){if((DOTS[h[q.slot]]===DOTS[q.t])!==q.same){ok=false;break}}
     if(ok){count++;for(let i=0;i<5;i++)slots[i].add(h[i]);if(count===1)only=h}
@@ -341,7 +344,7 @@ function renderStands(sol){
       if(i<5){
         let cand='';
         if(mine&&sol&&!over){const s=[...sol.slots[i]].sort((a,b)=>a-b);cand=s.length?`<span class="cand">${s[0]}–${s[s.length-1]}<br>${s.length} left</span>`:'<span class="cand">none</span>'}
-        cells+=`<div class="slot" style="grid-column:${2+2*i}">${reveal?tile(hand[i]):back()}<span class="slotno">${i+1}</span>${cand}</div>`;
+        cells+=`<div class="slot" style="grid-column:${2+2*i}">${reveal?tile(hand[i]):back(colorOf(hand[i]))}<span class="slotno">${i+1}</span>${cand}</div>`;
         cells+=`<div class="cmpcell" style="grid-column:${2+2*i}">${ev.filter(e=>e.k==='cmp'&&e.slot===i).map(e=>`<span class="cmp">${chip(e.t)}<em class="${e.same?'yes':'no'}">${e.same?'= dots':'≠ dots'}</em></span>`).join('')}</div>`;
       }
     }
